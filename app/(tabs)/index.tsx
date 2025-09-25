@@ -8,6 +8,7 @@ import {
   StyleSheet,
   Alert,
   RefreshControl,
+  ActivityIndicator,
 } from "react-native";
 import { Link } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -17,9 +18,8 @@ import { useReports } from "../context/ReportsContext";
 import HeroesScreen from "./heroes"; // Import the heroes screen
 
 export default function HomeScreen() {
-  const { reports, updateReportVotes, userVotes } = useReports();
+  const { reports, updateReportVotes, userVotes, isLoading, refreshReports } = useReports();
   const [refreshing, setRefreshing] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
   const [currentTab, setCurrentTab] = useState<'home' | 'heroes'>('home');
   const insets = useSafeAreaInsets();
 
@@ -33,10 +33,13 @@ export default function HomeScreen() {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    // Simple refresh - you can add more logic here if needed
-    setTimeout(() => {
+    try {
+      await refreshReports();
+    } catch (error) {
+      console.error('Refresh failed:', error);
+    } finally {
       setRefreshing(false);
-    }, 1000);
+    }
   };
 
   const getStatusColor = (status: string) => {
@@ -164,6 +167,13 @@ export default function HomeScreen() {
 
   const HomeTab = () => (
     <View style={styles.container}>
+      {isLoading && (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#007b55" />
+          <Text style={styles.loadingText}>Loading reports...</Text>
+        </View>
+      )}
+      
       {/* Header */}
       <View style={styles.header}>
         <View>
@@ -273,6 +283,23 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#f8f9fa",
     paddingHorizontal: 16,
+  },
+  loadingContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.8)',
+    zIndex: 1000,
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#007b55',
+    fontWeight: '500',
   },
   header: {
     flexDirection: 'row',
