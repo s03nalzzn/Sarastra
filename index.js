@@ -12,8 +12,8 @@ app.use(cors());
 
 // Supabase client setup
 const supabase = createClient(
-  "https://YOUR_PROJECT_URL.supabase.co", // Replace with your Supabase project URL
-  "YOUR_ANON_KEY"                         // Replace with your Supabase anon key
+  "https://uluewsrikqrozijvkbhn.supabase.co", // Supabase project URL
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVsdWV3c3Jpa3Fyb3ppanZrYmhuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg2OTY2MTUsImV4cCI6MjA3NDI3MjYxNX0.nleX6kBlbkNuz7JS00Ms0fLPJx7dgaGDf35CWhPV2v4" // Supabase anon key
 );
 
 // API route for leaderboard
@@ -22,43 +22,70 @@ app.get("/leaderboard", async (req, res) => {
     // Last 7 days timestamp
     const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
-    // Fetch votes from Supabase in last 7 days
-    const { data: votes, error } = await supabase
-      .from("votes")
-      .select("user_id, posts(user_id), created_at") // Make sure posts relation exists
+    // --- 1. Fetch upvotes with report owners ---
+    const { data: upvotes, error: upvoteError } = await supabase
+      .from("report_upvotes")
+      .select("user_id, report_id, created_at, reports(reporter)")
       .gte("created_at", oneWeekAgo);
 
-    if (error) throw error;
+    if (upvoteError) throw upvoteError;
 
-    // Initialize stats object
-    const stats = {};
+    // --- 2. Fetch reports to count per user ---
+    const { data: reports, error: reportError } = await supabase
+      .from("reports")
+      .select("reporter, id, created_at")
+      .gte("created_at", oneWeekAgo);
 
-    votes.forEach(v => {
-      const voter = v.user_id;         // User who voted
-      const owner = v.posts.user_id;   // Owner of the post
+    if (reportError) throw reportError;
 
-      // Initialize user stats if not present
-      if (!stats[voter]) stats[voter] = { received: 0, given: 0, hero_score: 0 };
-      if (!stats[owner]) stats[owner] = { received: 0, given: 0, hero_score: 0 };
+    // --- 3. Fetch profiles for names/emails (expand later with avatar, full_name etc.) ---
+    const { data: profiles, error: profileError } = await supabase
+      .from("profiles")
+      .select("id, email");
 
-      // Count votes given
-      stats[voter].given++;
+    if (profileError) throw profileError;
 
-      // Count votes received
-      stats[owner].received++;
+    const profileMap = {};
+    profiles.forEach(p => {
+      profileMap[p.id] = p;
     });
 
-    // Calculate hero score
+    // --- 4. Stats calculation ---
+    const stats = {};
+
+    // Upvotes → given & received
+    upvotes.forEach(v => {
+      const voter = v.user_id;               // who upvoted
+      const owner = v.reports?.reporter;     // report ka owner
+
+      if (!stats[voter]) stats[voter] = { received: 0, given: 0, reports: 0, hero_score: 0 };
+      if (owner && !stats[owner]) stats[owner] = { received: 0, given: 0, reports: 0, hero_score: 0 };
+
+      stats[voter].given++;
+      if (owner) stats[owner].received++;
+    });
+
+    // Reports → count
+    reports.forEach(r => {
+      if (!stats[r.reporter]) stats[r.reporter] = { received: 0, given: 0, reports: 0, hero_score: 0 };
+      stats[r.reporter].reports++;
+    });
+
+    // --- 5. Hero score calculation ---
     for (const user in stats) {
-      stats[user].hero_score = (2 * stats[user].received) + (1 * stats[user].given);
+      stats[user].hero_score = (2 * stats[user].received) + (1 * stats[user].reports);
     }
 
-    // Convert object → array and sort by hero score
+    // --- 6. Convert object → array ---
     let leaderboard = Object.entries(stats)
-      .map(([user_id, values]) => ({ user_id, ...values }))
+      .map(([user_id, values]) => ({
+        user_id,
+        email: profileMap[user_id]?.email || "Unknown",
+        ...values
+      }))
       .sort((a, b) => b.hero_score - a.hero_score);
 
-    // Assign rank + badges
+    // --- 7. Assign rank & badges ---
     leaderboard = leaderboard.map((user, index) => {
       let badge = "Participant";
       if (index === 0) badge = "🏆 Hero of the Week (Gold)";
@@ -72,7 +99,7 @@ app.get("/leaderboard", async (req, res) => {
       };
     });
 
-    // Return leaderboard JSON
+    // --- 8. Send response ---
     res.json(leaderboard);
 
   } catch (err) {
