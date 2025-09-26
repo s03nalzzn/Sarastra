@@ -38,18 +38,25 @@ https://sarastra.onrender.com/leaderboard
 
 ### 1. Clone the repository
 git clone https://github.com/your-username/civic-leaderboard-backend.git
+
 cd civic-leaderboard-backend
-2. Install dependencies
+
+### 2. Install dependencies
 npm install
-3. Create a .env file
+
+### 3. Create a .env file
 PORT=5000
+
 SUPABASE_URL=your-supabase-url
+
 SUPABASE_ANON_KEY=your-supabase-anon-key
+
 ⚠️ Keep this file secret. Do not commit it to Git.
 
-4. Start the server
+### 4. Start the server
 node index.js
-📤 Deployment (Render)
+
+### 📤 Deployment (Render)
 Push your code to GitHub
 
 Go to https://render.com
