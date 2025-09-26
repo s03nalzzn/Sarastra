@@ -66,26 +66,41 @@ Add your environment variables under "Environment"
 
 🧪 Testing
 You can test the API using:
+
 curl https://sarastra.onrender.com/leaderboard
+
 Or use Postman, Insomnia, or your frontend.
 
 📄 Sample Response
 [
+
   {
+  
     "rank": 1,
+    
     "user_id": "uuid-123",
+    
     "email": "hero@example.com",
+    
     "received": 10,
+    
     "given": 5,
+    
     "reports": 3,
+    
     "hero_score": 23,
+    
     "badge": "🏆 Hero of the Week (Gold)"
+    
   },
-  ...
+  
 ]
 📁 Project Structure
 
 ├── index.js
+
 ├── .env , .gitignore         # Not committed
+
 ├── package.json
+
 └── package-lock.json
