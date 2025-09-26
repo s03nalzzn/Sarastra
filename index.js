@@ -127,6 +127,13 @@ app.get("/leaderboard", async (req, res) => {
 // ──────────────────────────────────────
 // 🔊 Start the server
 // ──────────────────────────────────────
+// Optional friendly root route
+app.get("/", (req, res) => {
+  res.send("🎉 Civic backend is live! Visit /leaderboard to see the data.");
+});
+
+// Start server
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });
+
